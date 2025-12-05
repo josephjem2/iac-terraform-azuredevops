@@ -1,0 +1,47 @@
+
+# Trigger pipeline on changes to main branch
+trigger:
+- main
+
+# Use latest Ubuntu image for the build agent
+pool:
+  vmImage: 'ubuntu-latest'
+
+# Pipeline steps
+steps:
+# 1. Install Terraform
+- task: TerraformInstaller@0
+  inputs:
+    terraformVersion: 'latest'
+
+# 2. Azure CLI Login (using Service Connection)
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: '<ServiceConnection>'   # Replace with your Azure DevOps Service Connection name
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      echo "Logged into Azure successfully"
+
+# 3. Fetch secrets from Azure Key Vault (Optional but recommended)
+- task: AzureKeyVault@2
+  inputs:
+    azureSubscription: '<ServiceConnection>'
+    KeyVaultName: '<YourKeyVault>'            # Replace with your Key Vault name
+    SecretsFilter: '*'                        # Fetch all secrets or specify names
+    RunAsPreJob: true
+
+# 4. Terraform Init
+- script: |
+    terraform init
+  displayName: 'Terraform Init'
+
+# 5. Terraform Plan
+- script: |
+    terraform plan -out=tfplan
+  displayName: 'Terraform Plan'
+
+# 6. Terraform Apply
+- script: |
+    terraform apply -auto-approve tfplan
+  displayName: 'Terraform Apply'
