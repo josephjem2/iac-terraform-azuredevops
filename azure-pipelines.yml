@@ -7,41 +7,48 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 
-# Pipeline steps
 steps:
-# 1. Install Terraform
-- task: TerraformInstaller@0
-  inputs:
-    terraformVersion: 'latest'
+# 1. Install Terraform manually
+- script: |
+    sudo apt-get update
+    sudo apt-get install -y gnupg software-properties-common curl
+    curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+    sudo apt-add-repository "deb https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+    sudo apt-get update && sudo apt-get install terraform -y
+    terraform -version
+  displayName: 'Install Terraform'
 
-# 2. Azure CLI Login (using Service Connection)
+# 2. Azure CLI Login using Service Connection
 - task: AzureCLI@2
   inputs:
-    azureSubscription: '<ServiceConnection>'   # Replace with your Azure DevOps Service Connection name
+    azureSubscription: 'AzureBootcampConnection'   # Replace with your Service Connection name
     scriptType: 'bash'
     scriptLocation: 'inlineScript'
     inlineScript: |
       echo "Logged into Azure successfully"
 
-# 3. Fetch secrets from Azure Key Vault (Optional but recommended)
+# 3. (Optional) Fetch secrets from Azure Key Vault
 - task: AzureKeyVault@2
   inputs:
-    azureSubscription: '<ServiceConnection>'
-    KeyVaultName: '<YourKeyVault>'            # Replace with your Key Vault name
-    SecretsFilter: '*'                        # Fetch all secrets or specify names
+    azureSubscription: 'AzureBootcampConnection'
+    KeyVaultName: '<YourKeyVault>'                # Replace with your Key Vault name
+    SecretsFilter: '*'
     RunAsPreJob: true
 
 # 4. Terraform Init
 - script: |
+    cd terraform
     terraform init
   displayName: 'Terraform Init'
 
 # 5. Terraform Plan
 - script: |
+    cd terraform
     terraform plan -out=tfplan
   displayName: 'Terraform Plan'
 
 # 6. Terraform Apply
 - script: |
+    cd terraform
     terraform apply -auto-approve tfplan
   displayName: 'Terraform Apply'
